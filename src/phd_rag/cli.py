@@ -32,6 +32,15 @@ def main() -> None:
     recommend = subparsers.add_parser("recommend", help="Recommend research leads from a profile JSON file.")
     recommend.add_argument("--profile", required=True, type=Path)
     recommend.add_argument("--top-k", type=int, default=12)
+    agent = subparsers.add_parser(
+        "agent",
+        help="Use an Ollama agent that calls the local RAG MCP tools.",
+    )
+    agent.add_argument("question", nargs="?", help="Question for the local RAG agent.")
+    agent.add_argument("--profile", type=Path, help="Candidate profile JSON; cannot be combined with a question.")
+    agent.add_argument("--country", action="append", help="Limit retrieval to a country; repeat to select several.")
+    agent.add_argument("--top-k", type=int, default=12)
+    agent.add_argument("--model", help="Ollama model override, e.g. mistral.")
     args = parser.parse_args()
     settings = get_settings()
 
@@ -57,6 +66,35 @@ def main() -> None:
         )
         print(reply)
         _print_sources(results)
+    elif args.command == "agent":
+        if bool(args.question) == bool(args.profile):
+            parser.error("agent requires exactly one of a question or --profile PROFILE")
+        if args.profile:
+            profile = CandidateProfile.model_validate_json(args.profile.read_text(encoding="utf-8"))
+            question = profile_to_question(profile)
+            countries = profile.preferred_countries or None
+            candidate_profile_json = args.profile.read_text(encoding="utf-8")
+        else:
+            question = args.question
+            countries = args.country or None
+            candidate_profile_json = None
+        # Imported only for this command so ordinary RAG commands do not require
+        # the optional MCP agent runtime to be loaded at startup.
+        from .agentic import run_agentic_matcher
+
+        outcome = run_agentic_matcher(
+            settings,
+            question,
+            args.top_k,
+            countries=countries,
+            model=args.model,
+            candidate_profile_json=candidate_profile_json,
+        )
+        print(f"Agentic RAG matcher (Ollama model: {outcome.model})")
+        for event in outcome.trace:
+            print(event)
+        print(f"\n{outcome.answer}")
+        _print_sources(outcome.sources)
 
 
 if __name__ == "__main__":

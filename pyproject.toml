@@ -7,11 +7,12 @@ name = "phd-rag"
 version = "0.1.0"
 description = "Source-backed PhD recommendation RAG over official university pages"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
   "beautifulsoup4>=4.12,<5",
   "faiss-cpu>=1.8,<2",
   "langchain-text-splitters>=0.3,<1",
+  "mcp>=2,<3",
   "numpy>=1.26,<3",
   "openai>=1.0,<3",
   "pydantic>=2.7,<3",

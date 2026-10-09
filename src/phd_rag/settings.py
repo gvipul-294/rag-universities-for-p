@@ -12,6 +12,8 @@ class Settings:
     root: Path
     embedding_model: str
     chat_model: str
+    ollama_model: str
+    ollama_base_url: str
 
     @property
     def registry_path(self) -> Path:
@@ -34,6 +36,8 @@ def get_settings() -> Settings:
         root=root,
         embedding_model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
         chat_model=os.getenv("OPENAI_CHAT_MODEL", "gpt-5-mini"),
+        ollama_model=os.getenv("OLLAMA_MODEL", "mistral"),
+        ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
     )
 
 
@@ -44,4 +48,3 @@ def require_api_key() -> str:
             "OPENAI_API_KEY is missing. Copy .env.example to .env and add your key."
         )
     return key
-
