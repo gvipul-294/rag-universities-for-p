@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "phd-rag"
+version = "0.1.0"
+description = "Source-backed PhD recommendation RAG over official university pages"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "beautifulsoup4>=4.12,<5",
+  "faiss-cpu>=1.8,<2",
+  "langchain-text-splitters>=0.3,<1",
+  "numpy>=1.26,<3",
+  "openai>=1.0,<3",
+  "pydantic>=2.7,<3",
+  "python-dotenv>=1.0,<2",
+  "requests>=2.31,<3",
+  "tqdm>=4.66,<5",
+]
+
+[project.scripts]
+phd-rag = "phd_rag.cli:main"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
