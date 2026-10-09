@@ -4,6 +4,15 @@ A runnable, source-backed RAG prototype for discovering PhD research leads from 
 
 This is deliberately **not** an admissions decision engine. It returns research leads and citations, never an admission probability or a claim that should be checked against the official page.
 
+## What this project does
+
+- Builds a local search index from public, official graduate, doctoral, and admissions pages.
+- Matches natural-language questions or a structured candidate profile against that evidence.
+- Produces a short list of research leads, with the official URLs used to support the answer.
+- Keeps generated data local: raw page text, FAISS vectors, chunks, and an ingestion manifest are never committed.
+
+It does **not** scrape behind logins, bypass website restrictions, select a supervisor, calculate an admission chance, or replace checking the linked departmental pages.
+
 ## Why FAISS here—and when not to use it
 
 The requested corpus is roughly 100 public admissions/research pages. FAISS is the best first database choice for that scale because it is local, free, fast, transparent, and has no hosting or data-retention concern. `IndexFlatIP` with L2-normalized OpenAI embeddings gives exact cosine-similarity retrieval; it is simple to inspect and rebuild.
@@ -39,6 +48,30 @@ The pipeline follows the proposed RAG pattern while keeping every layer replacea
 4. Retrieve relevant passages, optionally apply the candidate's preferred-country metadata filter, then ask the language model to synthesize only the retrieved evidence.
 5. Print the retrieved official source URLs with similarity scores after every answer.
 
+### Retrieval lifecycle
+
+```text
+1. Registry     data/universities.json
+2. Ingestion    fetch -> extract visible text -> cache raw text
+3. Indexing     split -> embed -> normalize -> FAISS IndexFlatIP
+4. Retrieval    embed query -> top-k similarity search -> optional country filter
+5. Answering    retrieved context + guardrailed prompt -> cited research leads
+```
+
+The index is intentionally rebuilt from source pages rather than incrementally mutating embeddings. That makes runs reproducible and makes it easier to replace stale or failed URLs. An ingestion run replaces the files in `artifacts/`; it does not send the university content anywhere except to the configured OpenAI API for embedding.
+
+## Project layout
+
+| Path | Purpose |
+| --- | --- |
+| `data/universities.json` | Reviewed seed list of official university URLs and country metadata. |
+| `data/example_candidate.json` | Example input profile for a recommendation query. |
+| `src/phd_rag/ingest.py` | Web extraction, recursive chunking, embedding batches, and FAISS persistence. |
+| `src/phd_rag/retrieve.py` | Similarity search, metadata narrowing, prompt construction, and answer generation. |
+| `src/phd_rag/cli.py` | The `sources`, `ingest`, `ask`, and `recommend` commands. |
+| `artifacts/` | Generated FAISS index, chunk metadata, and the latest manifest; ignored by Git. |
+| `raw_pages/` | Cached page text for inspection and debugging; ignored by Git. |
+
 ## Quick start
 
 Requires Python 3.9+ and an OpenAI API key.
@@ -53,6 +86,8 @@ cp .env.example .env
 ```
 
 The documented commands use `PYTHONPATH=src python -m phd_rag.cli`, so they work without a package install. With a recent pip that supports PEP 660, `pip install -e .` also installs a `phd-rag` command.
+
+Never commit `.env`; it is ignored by default. The OpenAI client reads `OPENAI_API_KEY` from that file when the CLI starts.
 
 Start with two pages to validate credentials, network access, and extraction:
 
@@ -73,18 +108,78 @@ Ask for a recommendation using the included candidate profile:
 PYTHONPATH=src python -m phd_rag.cli recommend --profile data/example_candidate.json
 ```
 
-Useful operations:
+## Command reference
 
 ```bash
-PYTHONPATH=src python -m phd_rag.cli sources # inspect all 100 official source URLs
+# Inspect all 100 official source URLs before ingesting.
+PYTHONPATH=src python -m phd_rag.cli sources
+
+# Index only selected countries or run a small smoke test.
 PYTHONPATH=src python -m phd_rag.cli ingest --country Canada --country Germany
+PYTHONPATH=src python -m phd_rag.cli ingest --limit 2 --delay 1
+
+# Ask an evidence-backed question after an index exists.
 PYTHONPATH=src python -m phd_rag.cli ask "What funding or supervisor details should I verify for an AI PhD?"
+
+# Recommend PhD research leads for a JSON profile.
+PYTHONPATH=src python -m phd_rag.cli recommend --profile data/example_candidate.json --top-k 12
+
+# Run the registry validation.
 PYTHONPATH=src python -m unittest discover -s tests
 ```
+
+`--delay` spaces page requests to be considerate of university websites. `--top-k` controls how many chunks are supplied to the answer model; increasing it can improve coverage but also increases answer-context size and cost.
 
 ## Candidate profiles
 
 `data/example_candidate.json` is the input contract. The required fields are `field`, `degree`, and `research_interests`; the rest make retrieval and the final advice more useful. Keep it free of unnecessary personal data. API responses, raw pages, and generated indexes are local and ignored by Git.
+
+```json
+{
+  "field": "Computer Science",
+  "degree": "Degree, grades, and relevant preparation",
+  "research_interests": ["machine learning", "natural language processing"],
+  "citizenship_or_residency": "Optional",
+  "preferred_countries": ["Canada", "Germany"],
+  "budget_or_funding_need": "Optional",
+  "test_scores": "Optional",
+  "constraints": "Optional"
+}
+```
+
+`preferred_countries` narrows returned passages after FAISS over-fetches candidates. It is a convenience filter for this small corpus, not a substitute for database-native filtering in a larger deployment.
+
+## Index outputs and provenance
+
+After a successful `ingest` command, inspect these local outputs:
+
+| File | Contents | Why it matters |
+| --- | --- | --- |
+| `artifacts/university_phd.faiss` | The normalized dense-vector FAISS index. | Required for search. |
+| `artifacts/chunks.jsonl` | One text chunk per line plus URL, university, country, focus, and fetch time. | Makes retrieval explainable and auditable. |
+| `artifacts/manifest.json` | Build timestamp, model name, source/chunk counts, and failures. | Reveals blocked or changed sources. |
+| `raw_pages/*.txt` | Visible text extracted from each successful page. | Lets you review extraction quality without re-fetching. |
+
+If a website blocks a request, change its registry entry to another official, publicly accessible page and rebuild. Do not silently substitute a third-party source.
+
+## OpenAI usage and model changes
+
+The project calls the embeddings endpoint in batches during ingestion and again once per query. It then uses the Responses API to synthesize an answer from retrieved chunks. The implementation uses the official Python SDK pattern for `client.embeddings.create`; see the [official OpenAI embeddings guide](https://developers.openai.com/api/docs/guides/embeddings) for current API details and model constraints.
+
+```text
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+OPENAI_CHAT_MODEL=gpt-5-mini
+```
+
+Keep the same embedding model for indexing and querying. When you change `OPENAI_EMBEDDING_MODEL`, delete/rebuild `artifacts/` by running `ingest` again; query vectors and stored vectors must have compatible dimensions. The default splitter uses 1,200-character chunks with 180-character overlap. Tune chunk size, overlap, and `top-k` using representative candidate questions—not intuition alone.
+
+## Cost, quality, and freshness
+
+- Embedding cost is primarily driven by the amount of extracted webpage text; start with `--limit 2` before a full ingestion.
+- Answer cost grows with the retrieved context. Keep `top-k` modest and measure answer quality on a set of real questions.
+- Re-run ingestion on a schedule appropriate to admissions cycles and whenever `manifest.json` reports failures.
+- The seed list is not a ranking system. A university URL can be valid while still being too general for a field-specific recommendation; add official faculty, department, funding, and programme pages after review.
+- Treat retrieved sources as leads to verify. Admission requirements, funding, deadlines, and supervisor availability can change quickly.
 
 ## Data-quality and safety guardrails
 
@@ -94,13 +189,16 @@ PYTHONPATH=src python -m unittest discover -s tests
 - Treat citations as a verification checklist; programme requirements are volatile and often department-specific.
 - Before production, add a URL-review workflow, periodic refreshes, department/faculty pages, multilingual extraction, PII minimization, evaluation queries, and human review.
 
-## Configuration
+## Troubleshooting
 
-The default models are set in `.env.example`:
+| Symptom | Likely cause | Action |
+| --- | --- | --- |
+| `OPENAI_API_KEY is missing` | No key in `.env` or environment. | Copy `.env.example` to `.env` and set the key. |
+| `Index not found` | Query ran before ingestion. | Run `ingest` first. |
+| A university is in `failures` | The page moved, blocked the request, or needs JavaScript. | Review the URL and use a different official public page. |
+| Results feel too broad | The page corpus is generic or the query lacks a field. | Add field-specific official pages and provide a more detailed profile. |
+| Dimension/index error after changing models | Query and index used different embedding models. | Rebuild the index with `ingest`. |
 
-```text
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-OPENAI_CHAT_MODEL=gpt-5-mini
-```
+## Production next steps
 
-The OpenAI embedding model can be changed only when rebuilding the index. The query embedding must match the index embedding model. Model availability and pricing should be verified in the [official OpenAI documentation](https://developers.openai.com/api/docs/models) before deployment.
+For a decision-support product, add server-side metadata filters, a reviewed content pipeline, scheduled refreshes, retrieval/answer evaluations, access controls, observability, rate limiting, and a human admissions-review workflow. Move from FAISS to pgvector or Qdrant before running a shared, multi-user service or relying on complex filter combinations.
