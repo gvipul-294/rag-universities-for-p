@@ -14,6 +14,9 @@ class Settings:
     chat_model: str
     ollama_model: str
     ollama_base_url: str
+    agent_min_top_score: float
+    agent_min_unique_universities: int
+    agent_max_retrieval_attempts: int
 
     @property
     def registry_path(self) -> Path:
@@ -38,6 +41,9 @@ def get_settings() -> Settings:
         chat_model=os.getenv("OPENAI_CHAT_MODEL", "gpt-5-mini"),
         ollama_model=os.getenv("OLLAMA_MODEL", "mistral"),
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+        agent_min_top_score=float(os.getenv("AGENT_MIN_TOP_SCORE", "0.30")),
+        agent_min_unique_universities=int(os.getenv("AGENT_MIN_UNIQUE_UNIVERSITIES", "2")),
+        agent_max_retrieval_attempts=int(os.getenv("AGENT_MAX_RETRIEVAL_ATTEMPTS", "2")),
     )
 
 
