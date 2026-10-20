@@ -9,15 +9,14 @@ from pathlib import Path
 from typing import Iterable
 
 import faiss
-import numpy as np
 import requests
 from bs4 import BeautifulSoup
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from openai import OpenAI
 from tqdm import tqdm
 
 from .models import UniversitySource
-from .settings import Settings, require_api_key
+from .embeddings import embed_passages
+from .settings import Settings
 
 USER_AGENT = "phd-rag-research-bot/0.1 (educational; contact: local-user)"
 INDEX_FILE = "university_phd.faiss"
@@ -59,16 +58,6 @@ def split_text(text: str) -> list[str]:
     return [chunk for chunk in splitter.split_text(text) if len(chunk.strip()) >= 100]
 
 
-def _embed(client: OpenAI, model: str, texts: list[str]) -> np.ndarray:
-    vectors: list[list[float]] = []
-    for offset in range(0, len(texts), 96):
-        response = client.embeddings.create(model=model, input=texts[offset : offset + 96])
-        vectors.extend(item.embedding for item in response.data)
-    matrix = np.asarray(vectors, dtype="float32")
-    faiss.normalize_L2(matrix)
-    return matrix
-
-
 def build_index(
     settings: Settings,
     countries: set[str] | None = None,
@@ -76,7 +65,6 @@ def build_index(
     delay_seconds: float = 0.4,
 ) -> dict[str, object]:
     """Download configured official pages, chunk them, and replace the local index."""
-    require_api_key()
     sources = load_registry(settings.registry_path)
     if countries:
         wanted = {country.casefold() for country in countries}
@@ -112,8 +100,7 @@ def build_index(
     if not records:
         raise RuntimeError("No pages could be converted to usable text; inspect the failures in manifest.json.")
 
-    client = OpenAI()
-    vectors = _embed(client, settings.embedding_model, [record["text"] for record in records])
+    vectors = embed_passages(settings, [record["text"] for record in records])
     index = faiss.IndexFlatIP(vectors.shape[1])
     index.add(vectors)
     settings.artifacts_dir.mkdir(parents=True, exist_ok=True)
@@ -122,6 +109,7 @@ def build_index(
         handle.write("\n".join(json.dumps(record, ensure_ascii=False) for record in records) + "\n")
     manifest = {
         "built_at": datetime.now(timezone.utc).isoformat(),
+        "embedding_provider": settings.embedding_provider,
         "embedding_model": settings.embedding_model,
         "sources_requested": len(sources),
         "sources_succeeded": len(sources) - len(failures),

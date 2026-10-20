@@ -15,7 +15,7 @@ It does **not** scrape behind logins, bypass website restrictions, select a supe
 
 ## Why FAISS here—and when not to use it
 
-The requested corpus is roughly 100 public admissions/research pages. FAISS is the best first database choice for that scale because it is local, free, fast, transparent, and has no hosting or data-retention concern. `IndexFlatIP` with L2-normalized OpenAI embeddings gives exact cosine-similarity retrieval; it is simple to inspect and rebuild.
+The requested corpus is roughly 100 public admissions/research pages. FAISS is the best first database choice for that scale because it is local, free, fast, transparent, and has no hosting or data-retention concern. `IndexFlatIP` with L2-normalized embeddings gives exact cosine-similarity retrieval; it is simple to inspect and rebuild.
 
 | Situation | Recommended store | Reason |
 | --- | --- | --- |
@@ -36,9 +36,9 @@ University websites change frequently. Review the registry and re-ingest before 
 
 ```text
 Official URLs (100) -> requests + HTML text extraction -> RecursiveCharacterTextSplitter
-       -> OpenAI embeddings -> normalized FAISS index + JSONL metadata
+       -> local fastembed embeddings (bge-small-en-v1.5) -> normalized FAISS index + JSONL metadata
        -> retrieve relevant chunks -> either:
-          - OpenAI Responses API for `ask` / `recommend`, or
+          - an OpenAI-compatible chat API (Groq by default) for `ask` / `recommend`, or
           - MCP tools + local Ollama agent for `agent`
 ```
 
@@ -46,9 +46,9 @@ The pipeline follows the proposed RAG pattern while keeping every layer replacea
 
 1. Fetch public official pages with an identifiable user-agent and cache raw text.
 2. Split text with a recursive character splitter (1,200 chars, 180-char overlap).
-3. Embed chunks using OpenAI embeddings and store normalized vectors in FAISS.
+3. Embed chunks locally with fastembed (`BAAI/bge-small-en-v1.5`) and store normalized vectors in FAISS.
 4. Retrieve relevant passages, optionally apply the candidate's preferred-country metadata filter, then synthesize only the retrieved evidence.
-5. Use either the standard OpenAI answer path or the MCP-backed local agent path, and print the official source URLs with similarity scores after every answer.
+5. Use either the hosted open-weight answer path (Groq) or the MCP-backed local agent path, and print the official source URLs with similarity scores after every answer.
 
 ### Retrieval lifecycle
 
@@ -60,7 +60,7 @@ The pipeline follows the proposed RAG pattern while keeping every layer replacea
 5. Answering    retrieved context + guardrailed prompt -> cited research leads
 ```
 
-The index is intentionally rebuilt from source pages rather than incrementally mutating embeddings. That makes runs reproducible and makes it easier to replace stale or failed URLs. An ingestion run replaces the files in `artifacts/`; it does not send the university content anywhere except to the configured OpenAI API for embedding.
+The index is intentionally rebuilt from source pages rather than incrementally mutating embeddings. That makes runs reproducible and makes it easier to replace stale or failed URLs. An ingestion run replaces the files in `artifacts/`; with the default local embeddings it does not send the university content anywhere.
 
 ## Project layout
 
@@ -68,7 +68,8 @@ The index is intentionally rebuilt from source pages rather than incrementally m
 | --- | --- |
 | `data/universities.json` | Reviewed seed list of official university URLs and country metadata. |
 | `data/example_candidate.json` | Example input profile for a recommendation query. |
-| `src/phd_rag/ingest.py` | Web extraction, recursive chunking, embedding batches, and FAISS persistence. |
+| `src/phd_rag/ingest.py` | Web extraction, recursive chunking, and FAISS persistence. |
+| `src/phd_rag/embeddings.py` | Embedding backends: local fastembed (default) or the OpenAI embeddings API. |
 | `src/phd_rag/retrieve.py` | Similarity search, metadata narrowing, prompt construction, and answer generation. |
 | `src/phd_rag/mcp_server.py` | MCP server exposing source search, candidate mapping, and index-status tools. |
 | `src/phd_rag/agentic.py` | Ollama tool-calling loop that invokes those tools through MCP. |
@@ -78,7 +79,7 @@ The index is intentionally rebuilt from source pages rather than incrementally m
 
 ## Quick start
 
-Requires Python 3.10+ and an OpenAI API key. Python 3.10+ is required by the MCP Python SDK used for the agentic path.
+Requires Python 3.10+ and a free [Groq API key](https://console.groq.com/keys) for answer generation. Embeddings run locally and need no key. Python 3.10+ is required by the MCP Python SDK used for the agentic path.
 
 ```bash
 cd /Users/vipulgupta/work/mvp-saas/phd-rag
@@ -86,12 +87,12 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# Edit .env and add OPENAI_API_KEY
+# Edit .env and set LLM_API_KEY to your Groq key
 ```
 
 The documented commands use `PYTHONPATH=src python -m phd_rag.cli`, so they work without a package install. With a recent pip that supports PEP 660, `pip install -e .` also installs a `phd-rag` command.
 
-Never commit `.env`; it is ignored by default. The OpenAI client reads `OPENAI_API_KEY` from that file when the CLI starts.
+Never commit `.env`; it is ignored by default. The CLI reads `LLM_API_KEY` and the model settings from that file when it starts. The first `ingest` downloads the embedding model (under 100 MB) from Hugging Face and caches it.
 
 Start with two pages to validate credentials, network access, and extraction:
 
@@ -123,7 +124,7 @@ Candidate question/profile
 Ollama local model (`mistral` by default)
         |  tool call
         v
-MCP client  ->  PhD RAG MCP server  ->  FAISS + OpenAI query embedding
+MCP client  ->  PhD RAG MCP server  ->  FAISS + local query embedding
         ^             |                     |
         |             +-- official excerpts -+
         +----- tool result / source URLs -----+
@@ -149,8 +150,7 @@ The system prompt requires at least one retrieval call before a university recom
 ### Prerequisites
 
 - An existing local FAISS index, built with `ingest`.
-- `OPENAI_API_KEY`, because the current retrieval index and query embedding use OpenAI embeddings.
-- [Ollama](https://ollama.com/) installed and running locally. The final answer is generated by the local model; it is not sent to OpenAI.
+- [Ollama](https://ollama.com/) installed and running locally. The final answer is generated by the local model; nothing is sent to a hosted LLM.
 
 Pull the default model once, then run the agent:
 
@@ -180,7 +180,7 @@ This is useful when an MCP-capable desktop application or another local agent sh
 PYTHONPATH=src python -m phd_rag.mcp_server
 ```
 
-The server uses the standard `stdio` transport. A typical host configuration should launch the project environment and pass the OpenAI key through its environment:
+The server uses the standard `stdio` transport. A typical host configuration should launch the project environment. With the default local embeddings it needs no API key:
 
 ```json
 {
@@ -188,14 +188,13 @@ The server uses the standard `stdio` transport. A typical host configuration sho
     "phd-rag": {
       "command": "/absolute/path/to/phd-rag/.venv/bin/python",
       "args": ["-m", "phd_rag.mcp_server"],
-      "cwd": "/absolute/path/to/phd-rag",
-      "env": {"OPENAI_API_KEY": "your_api_key"}
+      "cwd": "/absolute/path/to/phd-rag"
     }
   }
 }
 ```
 
-Do not expose this server on a public network without authentication and access controls: it can query your local index and consumes embedding API usage when a tool is called.
+Do not expose this server on a public network without authentication and access controls: it can query your local index and, if `EMBEDDING_PROVIDER=openai`, consumes embedding API usage when a tool is called.
 
 ## Command reference
 
@@ -254,25 +253,38 @@ After a successful `ingest` command, inspect these local outputs:
 
 If a website blocks a request, change its registry entry to another official, publicly accessible page and rebuild. Do not silently substitute a third-party source.
 
-## OpenAI usage and model changes
+## Models and how to change them
 
-The project calls the embeddings endpoint in batches during ingestion and again once per query. The `ask` and `recommend` commands use the Responses API to synthesize an answer; the `agent` command instead uses Ollama for synthesis and MCP for source/tool access. The implementation uses the official Python SDK pattern for `client.embeddings.create`; see the [official OpenAI embeddings guide](https://developers.openai.com/api/docs/guides/embeddings) for current API details and model constraints.
+The system uses two models by default, both open-weight:
+
+| Role | Default | Where it runs | Setting |
+| --- | --- | --- | --- |
+| Embeddings (indexing and every query) | `BAAI/bge-small-en-v1.5` via [fastembed](https://github.com/qdrant/fastembed) | Locally on CPU, ~360 MB RAM | `EMBEDDING_PROVIDER`, `EMBEDDING_MODEL` |
+| Answer writing for `ask` / `recommend` | `openai/gpt-oss-120b` on Groq | Groq's OpenAI-compatible API | `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` |
+| Answer writing for `agent` | `mistral` via Ollama | Locally, needs several GB of RAM | `OLLAMA_BASE_URL`, `OLLAMA_MODEL` |
 
 ```text
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-OPENAI_CHAT_MODEL=gpt-5-mini
+EMBEDDING_PROVIDER=fastembed
+EMBEDDING_MODEL=BAAI/bge-small-en-v1.5
+LLM_BASE_URL=https://api.groq.com/openai/v1
+LLM_API_KEY=your_groq_api_key
+LLM_MODEL=openai/gpt-oss-120b
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=mistral
 ```
 
-Keep the same embedding model for indexing and querying. When you change `OPENAI_EMBEDDING_MODEL`, delete/rebuild `artifacts/` by running `ingest` again; query vectors and stored vectors must have compatible dimensions. The default splitter uses 1,200-character chunks with 180-character overlap. Tune chunk size, overlap, and `top-k` using representative candidate questions—not intuition alone.
+The answer step uses the Chat Completions API, so any OpenAI-compatible provider works (OpenRouter, Together, Ollama's `/v1` endpoint, or OpenAI itself with `LLM_BASE_URL` left empty). Provider model lists change; if a call returns `model_not_found`, pick another model from the provider's list.
+
+To use OpenAI embeddings instead, set `EMBEDDING_PROVIDER=openai`, `OPENAI_API_KEY`, and optionally `EMBEDDING_MODEL=text-embedding-3-small`.
+
+Keep the same embedding model for indexing and querying. When you change `EMBEDDING_PROVIDER` or `EMBEDDING_MODEL`, rebuild `artifacts/` by running `ingest` again; the CLI refuses to query an index built with a different model. The default splitter uses 1,200-character chunks with 180-character overlap. Tune chunk size, overlap, and `top-k` using representative candidate questions—not intuition alone.
 
 `OLLAMA_BASE_URL` is the local Ollama server endpoint, and `OLLAMA_MODEL` is the model name installed in that server. The agent uses Ollama's `POST /api/chat` interface with non-streaming output, a low temperature, and the MCP tool schemas discovered at run time. It has no Ollama API key configuration because the default endpoint is local.
 
 ## Cost, quality, and freshness
 
-- Embedding cost is primarily driven by the amount of extracted webpage text; start with `--limit 2` before a full ingestion.
-- Answer cost grows with the retrieved context. Keep `top-k` modest and measure answer quality on a set of real questions.
+- Local embeddings cost nothing but CPU time; start with `--limit 2` to check extraction before a full ingestion.
+- Answer latency and any provider rate limits grow with the retrieved context. Keep `top-k` modest and measure answer quality on a set of real questions.
 - Re-run ingestion on a schedule appropriate to admissions cycles and whenever `manifest.json` reports failures.
 - The seed list is not a ranking system. A university URL can be valid while still being too general for a field-specific recommendation; add official faculty, department, funding, and programme pages after review.
 - Treat retrieved sources as leads to verify. Admission requirements, funding, deadlines, and supervisor availability can change quickly.
@@ -289,11 +301,12 @@ Keep the same embedding model for indexing and querying. When you change `OPENAI
 
 | Symptom | Likely cause | Action |
 | --- | --- | --- |
-| `OPENAI_API_KEY is missing` | No key in `.env` or environment. | Copy `.env.example` to `.env` and set the key. |
+| `LLM_API_KEY is missing` | No answer-model key in `.env` or environment. | Copy `.env.example` to `.env` and set `LLM_API_KEY`. |
+| `model_not_found` from the answer API | The provider retired or never offered `LLM_MODEL`. | List the provider's models and set `LLM_MODEL` to an available one. |
 | `Index not found` | Query ran before ingestion. | Run `ingest` first. |
 | A university is in `failures` | The page moved, blocked the request, or needs JavaScript. | Review the URL and use a different official public page. |
 | Results feel too broad | The page corpus is generic or the query lacks a field. | Add field-specific official pages and provide a more detailed profile. |
-| Dimension/index error after changing models | Query and index used different embedding models. | Rebuild the index with `ingest`. |
+| `Index was built with ...` error | `EMBEDDING_MODEL` changed since the last `ingest`. | Rebuild the index with `ingest` or restore the previous model. |
 | The local agent cannot reach Ollama | Ollama is stopped, unavailable at the configured URL, or its model is missing. | Start Ollama, run `ollama pull mistral`, or change `OLLAMA_BASE_URL`/`OLLAMA_MODEL`. |
 | The local model does not call a tool | The selected model may not support reliable tool calling. | Use a tool-capable Ollama model and retry; `mistral` is the default integration target. |
 | `mcp` import error | Dependencies were installed with an older Python environment. | Recreate the environment with Python 3.10+ and run `pip install -r requirements.txt`. |

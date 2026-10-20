@@ -4,12 +4,12 @@ import json
 from dataclasses import dataclass
 
 import faiss
-import numpy as np
 from openai import OpenAI
 
-from .ingest import CHUNKS_FILE, INDEX_FILE
+from .embeddings import embed_query
+from .ingest import CHUNKS_FILE, INDEX_FILE, MANIFEST_FILE
 from .models import CandidateProfile
-from .settings import Settings, require_api_key
+from .settings import Settings, require_llm_key
 
 
 @dataclass
@@ -33,20 +33,30 @@ def _load_chunks(settings: Settings) -> list[dict[str, str]]:
     return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
 
 
+def _check_index_model(settings: Settings) -> None:
+    """Query and index vectors must come from the same embedding model."""
+    manifest_path = settings.artifacts_dir / MANIFEST_FILE
+    if not manifest_path.exists():
+        return
+    built_with = json.loads(manifest_path.read_text(encoding="utf-8")).get("embedding_model")
+    if built_with and built_with != settings.embedding_model:
+        raise RuntimeError(
+            f"Index was built with {built_with!r} but EMBEDDING_MODEL is {settings.embedding_model!r}. "
+            "Re-run `ingest` or change EMBEDDING_MODEL back."
+        )
+
+
 def search(
     settings: Settings,
     query: str,
     top_k: int = 12,
     countries: list[str] | None = None,
 ) -> list[RetrievedChunk]:
-    require_api_key()
     index_path = settings.artifacts_dir / INDEX_FILE
     if not index_path.exists():
         raise RuntimeError("Index not found. Run `phd-rag ingest` first.")
-    client = OpenAI()
-    response = client.embeddings.create(model=settings.embedding_model, input=query)
-    query_vector = np.asarray([response.data[0].embedding], dtype="float32")
-    faiss.normalize_L2(query_vector)
+    _check_index_model(settings)
+    query_vector = embed_query(settings, query)
     index = faiss.read_index(str(index_path))
     # Over-fetch before applying metadata filters, as IndexFlatIP has no native
     # filter support. This is adequate for the small local corpus; use a vector
@@ -85,13 +95,17 @@ def answer(
     countries: list[str] | None = None,
 ) -> tuple[str, list[RetrievedChunk]]:
     results = search(settings, question, top_k=top_k, countries=countries)
-    client = OpenAI()
-    response = client.responses.create(
-        model=settings.chat_model,
-        instructions=SYSTEM_PROMPT,
-        input=f"Question:\n{question}\n\nOfficial context:\n{_context(results)}",
+    # Chat Completions is the API every OpenAI-compatible provider supports.
+    client = OpenAI(api_key=require_llm_key(), base_url=settings.llm_base_url)
+    response = client.chat.completions.create(
+        model=settings.llm_model,
+        temperature=0.2,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f"Question:\n{question}\n\nOfficial context:\n{_context(results)}"},
+        ],
     )
-    return response.output_text, results
+    return response.choices[0].message.content or "", results
 
 
 def profile_to_question(profile: CandidateProfile) -> str:
