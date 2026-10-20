@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import sys
 from pathlib import Path
 
@@ -42,6 +43,9 @@ def main() -> None:
     agent.add_argument("--top-k", type=int, default=12)
     agent.add_argument("--model", help="Ollama model override, e.g. mistral.")
     args = parser.parse_args()
+    # Progress goes to stderr; command output (answers, manifest) stays on stdout.
+    logging.basicConfig(level=logging.WARNING, format="%(asctime)s %(levelname)-7s %(message)s", datefmt="%H:%M:%S")
+    logging.getLogger("phd_rag").setLevel(logging.INFO)
     settings = get_settings()
 
     if args.command == "sources":
