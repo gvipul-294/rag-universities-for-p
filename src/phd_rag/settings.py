@@ -17,6 +17,7 @@ class Settings:
     root: Path
     embedding_provider: str
     embedding_model: str
+    model_cache_dir: Path
     llm_base_url: str | None
     llm_model: str
     ollama_model: str
@@ -46,6 +47,9 @@ def get_settings() -> Settings:
         root=root,
         embedding_provider=provider,
         embedding_model=os.getenv("EMBEDDING_MODEL") or DEFAULT_EMBEDDING_MODELS[provider],
+        # fastembed defaults to the system temp dir, which is RAM-backed on many servers
+        # and wiped on reboot; keep downloaded model weights with the project instead.
+        model_cache_dir=Path(os.getenv("FASTEMBED_CACHE_PATH") or root / ".cache" / "fastembed"),
         # Any OpenAI-compatible chat endpoint (Groq, OpenRouter, Ollama's /v1, ...).
         # Empty means the OpenAI API itself.
         llm_base_url=os.getenv("LLM_BASE_URL", "https://api.groq.com/openai/v1") or None,

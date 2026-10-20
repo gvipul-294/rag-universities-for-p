@@ -11,11 +11,11 @@ from .settings import Settings, require_openai_key
 
 
 @lru_cache(maxsize=2)
-def _fastembed_model(model_name: str):
+def _fastembed_model(model_name: str, cache_dir: str):
     # Imported lazily so the OpenAI backend does not need fastembed installed.
     from fastembed import TextEmbedding
 
-    return TextEmbedding(model_name=model_name)
+    return TextEmbedding(model_name=model_name, cache_dir=cache_dir)
 
 
 def _normalized(vectors: list) -> np.ndarray:
@@ -27,7 +27,7 @@ def _normalized(vectors: list) -> np.ndarray:
 def embed_passages(settings: Settings, texts: list[str]) -> np.ndarray:
     """Embed document chunks for indexing; returns L2-normalized float32 vectors."""
     if settings.embedding_provider == "fastembed":
-        return _normalized(list(_fastembed_model(settings.embedding_model).passage_embed(texts, batch_size=32)))
+        return _normalized(list(_fastembed_model(settings.embedding_model, str(settings.model_cache_dir)).passage_embed(texts, batch_size=32)))
     from openai import OpenAI
 
     client = OpenAI(api_key=require_openai_key())
@@ -42,7 +42,7 @@ def embed_query(settings: Settings, query: str) -> np.ndarray:
     """Embed one search query; returns a (1, dim) L2-normalized float32 matrix."""
     if settings.embedding_provider == "fastembed":
         # BGE models use a query-specific prompt; query_embed applies it.
-        return _normalized(list(_fastembed_model(settings.embedding_model).query_embed(query)))
+        return _normalized(list(_fastembed_model(settings.embedding_model, str(settings.model_cache_dir)).query_embed(query)))
     from openai import OpenAI
 
     client = OpenAI(api_key=require_openai_key())

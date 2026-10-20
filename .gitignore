@@ -8,3 +8,4 @@ raw_pages/
 
 .env.*
 !.env.example
+.cache/
