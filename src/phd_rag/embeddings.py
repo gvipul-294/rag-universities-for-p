@@ -27,7 +27,10 @@ def _normalized(vectors: list) -> np.ndarray:
 def embed_passages(settings: Settings, texts: list[str]) -> np.ndarray:
     """Embed document chunks for indexing; returns L2-normalized float32 vectors."""
     if settings.embedding_provider == "fastembed":
-        return _normalized(list(_fastembed_model(settings.embedding_model, str(settings.model_cache_dir)).passage_embed(texts, batch_size=32)))
+        # Small batches keep ONNX Runtime's memory flat: batch 32 peaked above 730 MB
+        # on a 1 GB server, batch 4 stays near 360 MB and is no slower on 2 vCPUs.
+        model = _fastembed_model(settings.embedding_model, str(settings.model_cache_dir))
+        return _normalized(list(model.passage_embed(texts, batch_size=4)))
     from openai import OpenAI
 
     client = OpenAI(api_key=require_openai_key())
