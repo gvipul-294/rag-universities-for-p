@@ -82,7 +82,9 @@ def extract_page_text(url: str, timeout: int = 30) -> str:
     """
     response = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=timeout)
     response.raise_for_status()
-    soup = BeautifulSoup(response.text, "html.parser")
+    # Parse bytes, not response.text: when a server omits the charset header, requests
+    # assumes ISO-8859-1 and garbles UTF-8 pages. BeautifulSoup reads the BOM and <meta charset>.
+    soup = BeautifulSoup(response.content, "html.parser")
     for tag in soup(["script", "style", "nav", "footer", "header", "noscript", "svg"]):
         tag.decompose()
     return " ".join(soup.stripped_strings)

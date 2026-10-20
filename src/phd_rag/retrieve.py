@@ -30,7 +30,9 @@ def _load_chunks(settings: Settings) -> list[dict[str, str]]:
     path = settings.artifacts_dir / CHUNKS_FILE
     if not path.exists():
         raise RuntimeError("Index not found. Run `phd-rag ingest` first.")
-    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    # Split on "\n" only: str.splitlines() also breaks on characters such as U+0085
+    # and U+2028, which json.dumps(ensure_ascii=False) leaves unescaped inside records.
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").split("\n") if line]
 
 
 def _check_index_model(settings: Settings) -> None:
