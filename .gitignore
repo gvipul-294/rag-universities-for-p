@@ -6,3 +6,6 @@ artifacts/
 raw_pages/
 .pytest_cache/
 
+.env.*
+!.env.example
+.cache/
