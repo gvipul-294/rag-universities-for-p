@@ -1,5 +1,7 @@
 # PhD Programme RAG
 
+> New here? [HOW_IT_WORKS.md](HOW_IT_WORKS.md) gives a one-page walkthrough of each step and the file that does it.
+
 A runnable, source-backed RAG prototype for discovering PhD research leads from official university graduate/admissions pages. It starts with a curated registry of 100 major research universities across ten countries, downloads only the pages in that registry, and records the exact source URL and fetch time with every chunk.
 
 This is deliberately **not** an admissions decision engine. It returns research leads and citations, never an admission probability or a claim that should be checked against the official page.
