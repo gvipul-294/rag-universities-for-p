@@ -29,8 +29,8 @@ PYTHONPATH=src python -m phd_rag.cli <command>
 | --- | --- | --- |
 | 1. Read the input | A question, or a candidate profile turned into a question | `cli.py` · `main()`, `retrieve.py` · `profile_to_question()` |
 | 2. Turn the question into a vector | Same embedding model as indexing | `embeddings.py` · `embed_query()` |
-| 3. Find matching chunks | Search the index for the 12 closest chunks, filtered by country for profiles | `retrieve.py` · `search()` |
-| 4. Write the answer | Send the question, chunks and rules to the answer model (Groq `gpt-oss-120b`), which writes a cited reply | `retrieve.py` · `answer()` |
+| 3. Find matching chunks | Search the index for the 12 closest chunks, at most 3 per university, optionally filtered by country | `retrieve.py` · `search()` |
+| 4. Write the answer | Send the question, numbered sources [S1]…[S12] and strict rules to the answer model (Groq `gpt-oss-120b`), which writes a reply citing a source for every fact | `retrieve.py` · `answer()`, `SYSTEM_PROMPT` |
 
 ## Optional: agent mode (`agent` command)
 
@@ -57,6 +57,7 @@ A local Ollama model decides which search tool to call, then writes the answer i
 PYTHONPATH=src python -m phd_rag.cli sources                 # list the 100 sources
 PYTHONPATH=src python -m phd_rag.cli ingest                  # build the index
 PYTHONPATH=src python -m phd_rag.cli ask "your question"     # ask a question
+PYTHONPATH=src python -m phd_rag.cli ask "your question" --country "United Kingdom"
 PYTHONPATH=src python -m phd_rag.cli recommend --profile data/example_candidate.json
 PYTHONPATH=src python -m unittest discover -s tests          # run tests
 ```
