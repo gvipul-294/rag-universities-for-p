@@ -12,3 +12,6 @@ frontend/.env.local
 
 .DS_Store
 *.pem
+.env.*
+!.env.example
+.cache/
