@@ -5,4 +5,10 @@ __pycache__/
 artifacts/
 raw_pages/
 .pytest_cache/
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.env.local
 
+.DS_Store
+*.pem
