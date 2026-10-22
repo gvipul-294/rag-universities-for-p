@@ -22,6 +22,11 @@ class Settings:
     llm_model: str
     ollama_model: str
     ollama_base_url: str
+    agent_min_top_score: float
+    agent_min_unique_universities: int
+    agent_max_retrieval_attempts: int
+    cors_allow_origins: list[str]
+    api_bearer_token: str | None
 
     @property
     def registry_path(self) -> Path:
@@ -56,6 +61,17 @@ def get_settings() -> Settings:
         llm_model=os.getenv("LLM_MODEL", "openai/gpt-oss-120b"),
         ollama_model=os.getenv("OLLAMA_MODEL", "mistral"),
         ollama_base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
+        agent_min_top_score=float(os.getenv("AGENT_MIN_TOP_SCORE", "0.30")),
+        agent_min_unique_universities=int(os.getenv("AGENT_MIN_UNIQUE_UNIVERSITIES", "2")),
+        agent_max_retrieval_attempts=int(os.getenv("AGENT_MAX_RETRIEVAL_ATTEMPTS", "2")),
+        cors_allow_origins=[
+            origin.strip()
+            for origin in os.getenv(
+                "CORS_ALLOW_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+            ).split(",")
+            if origin.strip()
+        ],
+        api_bearer_token=os.getenv("PHD_RAG_API_TOKEN") or None,
     )
 
 

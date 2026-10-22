@@ -73,9 +73,12 @@ The index is intentionally rebuilt from source pages rather than incrementally m
 | `src/phd_rag/ingest.py` | Web extraction, recursive chunking, and FAISS persistence. |
 | `src/phd_rag/embeddings.py` | Embedding backends: local fastembed (default) or the OpenAI embeddings API. |
 | `src/phd_rag/retrieve.py` | Similarity search, metadata narrowing, prompt construction, and answer generation. |
-| `src/phd_rag/mcp_server.py` | MCP server exposing source search, candidate mapping, and index-status tools. |
-| `src/phd_rag/agentic.py` | Ollama tool-calling loop that invokes those tools through MCP. |
+| `src/phd_rag/mcp_server.py` | MCP server exposing source search, candidate mapping, index-status, and evidence-assessment tools. |
+| `src/phd_rag/agentic.py` | Decision-controlled MCP retrieval/refinement loop with local Ollama synthesis. |
+| `src/phd_rag/decisions.py` | Deterministic vector-evidence score and source-diversity quality gates. |
+| `src/phd_rag/api.py` | FastAPI HTTP boundary for the PhD Finder web frontend. |
 | `src/phd_rag/cli.py` | The `sources`, `ingest`, `ask`, `recommend`, and `agent` commands. |
+| `docs/api.md` | Browser-facing API contract, cURL examples, and remote-server checks. |
 | `artifacts/` | Generated FAISS index, chunk metadata, and the latest manifest; ignored by Git. |
 | `raw_pages/` | Cached page text for inspection and debugging; ignored by Git. |
 
@@ -115,14 +118,58 @@ Ask for a recommendation using the included candidate profile:
 PYTHONPATH=src python -m phd_rag.cli recommend --profile data/example_candidate.json
 ```
 
+## HTTP API for the web frontend
+
+The web frontend should call this API, never OpenAI or FAISS directly. The API exposes the two flows shown in the PhD Finder mockup: a free-form question and a structured candidate match. It returns the generated answer and the official-source passages needed to render linked evidence cards.
+
+```bash
+# An index must exist before asking questions.
+PYTHONPATH=src python -m phd_rag.cli ingest --limit 2
+PYTHONPATH=src uvicorn phd_rag.api:app --host 127.0.0.1 --port 8000
+
+# Health/index check, then a browser-equivalent request.
+curl --fail-with-body http://127.0.0.1:8000/api/v1/health
+curl --fail-with-body --request POST http://127.0.0.1:8000/api/v1/ask \
+  --header 'Content-Type: application/json' \
+  --data '{"question":"What IELTS score do UK universities ask for a PhD?","countries":["United Kingdom"]}'
+```
+
+Open `http://127.0.0.1:8000/docs` while the server is running to inspect and test the generated OpenAPI documentation. See [the API guide](docs/api.md) for the complete request/response contract, the candidate-match cURL example, and EC2 deployment checks.
+
+`CORS_ALLOW_ORIGINS` restricts which browser origins can call the service. Add the exact Vercel production URL before deployment. `PHD_RAG_API_TOKEN` is optional for local development, but must be set before a public deployment; a Vercel server-side proxy should hold it, not client-side JavaScript.
+
+### Frontend (Next.js / Vercel)
+
+The Vercel-ready frontend lives in `frontend/`. It includes Ask and Match flows, evidence cards, and a server-side API proxy so browser code never sees the backend bearer token. For local development, start the FastAPI server as above, then:
+
+```bash
+cd frontend
+cp .env.local.example .env.local
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`. For Vercel, import the GitHub repository and set the project root to `frontend`. Configure `PHD_RAG_API_URL` and `PHD_RAG_API_TOKEN` as server-side Vercel environment variables. Keep the backend API token and OpenAI key out of `NEXT_PUBLIC_*` variables and browser code. The API must also be reachable from Vercel over HTTPS; do not point production Vercel at a raw, unauthenticated EC2 HTTP port.
+
 ## MCP-backed open-source RAG agent
 
-The `agent` command is an agentic PhD-matching system. It runs an open-weight model locally through Ollama, gives that model a set of MCP tools, and lets the model decide which approved retrieval tool to call before forming a recommendation.
+The `agent` command is an agentic PhD-matching system with a bounded quality loop. It uses MCP for every RAG operation, FAISS to find the closest normalized embedding vectors, deterministic checks to decide whether the retrieved evidence is strong enough, and an open-weight model locally through Ollama only for query refinement and final synthesis.
 
 ```text
 Candidate question/profile
         |
         v
+MCP index-status check -> MCP retrieval -> FAISS closest cosine-similarity vectors
+                                      |
+                                      v
+                       deterministic evidence gate
+                       (score + university diversity)
+                           | approve              | reject
+                           v                      v
+                Ollama grounded answer     Ollama query refinement
+                           |                      |
+                           +------ cited leads <--+  (up to configured attempts)
+                                  or transparent insufficient-evidence result
 Ollama local model (`mistral` by default)
         |  tool call
         v
@@ -135,7 +182,7 @@ MCP client  ->  PhD RAG MCP server  ->  FAISS + local query embedding
 Evidence-grounded university matches + citations
 ```
 
-MCP does not replace the LLM or itself make model calls: it is the standard tool interface between the model-hosting agent and the RAG capabilities. Here the Python agent uses real MCP `list_tools` and `call_tool` operations against the project’s in-process MCP server. The same server can also be launched over standard input/output for another MCP-capable host.
+MCP does not replace the LLM or itself make model calls: it is the tool boundary between the agent and the RAG capabilities. The Python agent uses real MCP `call_tool` operations against the project’s in-process MCP server. It first checks that an index has been ingested, retrieves official excerpts, and evaluates them before asking the local model to write an answer. The same server can also be launched over standard input/output for another MCP-capable host.
 
 By default, the agent uses Ollama's `mistral` model. Ollama documents it as a 7B Mistral model distributed under an Apache license; the current default tag is about 4.4 GB. See the [Ollama Mistral library page](https://ollama.com/library/mistral) for current tags and hardware expectations.
 
@@ -146,8 +193,9 @@ By default, the agent uses Ollama's `mistral` model. Ollama documents it as a 7B
 | `search_official_university_sources` | A user asks a free-form PhD question. | Official excerpts, source URLs, countries, scores, and fetch times. |
 | `map_candidate_to_universities` | A structured candidate profile is supplied. | Candidate-aware retrieved sources, narrowed by preferred country where provided. |
 | `get_rag_index_status` | The agent needs to check whether a current index exists or inspect ingestion failures. | Latest manifest and index availability. |
+| `assess_phd_retrieval_evidence` | Retrieval has returned excerpts and the agent must decide whether they support a recommendation. | Deterministic approval/rejection plus score, diversity, and threshold metrics. |
 
-The system prompt requires at least one retrieval call before a university recommendation. It treats page excerpts as untrusted data, so instructions embedded in university web pages cannot alter the agent’s behavior.
+The agent never recommends a university until the evidence gate passes. A result is rejected when its strongest cosine score is below `AGENT_MIN_TOP_SCORE` or it represents fewer than `AGENT_MIN_UNIQUE_UNIVERSITIES` distinct universities. On a rejection, Ollama receives only the original request and decision metrics to refine the semantic query; it does not get to override the gate. After `AGENT_MAX_RETRIEVAL_ATTEMPTS`, the agent returns an explicit insufficient-evidence response instead of a speculative match. Retrieved page excerpts are treated as untrusted data, so instructions embedded in university web pages cannot alter agent behavior.
 
 ### Prerequisites
 
@@ -173,6 +221,18 @@ PYTHONPATH=src python -m phd_rag.cli agent "Find PhD options in robotics" --mode
 ```
 
 An agent run prints its MCP activity, model name, final answer, and retrieved official sources. The agent is intentionally constrained to retrieval tools instead of allowing arbitrary web browsing. That keeps university mapping tied to the reviewed registry, lowers prompt-injection risk from retrieved webpages, and preserves source citations.
+
+### Tune the evidence loop
+
+Set the quality gates in `.env` before invoking `agent`:
+
+```text
+AGENT_MIN_TOP_SCORE=0.30
+AGENT_MIN_UNIQUE_UNIVERSITIES=2
+AGENT_MAX_RETRIEVAL_ATTEMPTS=2
+```
+
+`AGENT_MIN_TOP_SCORE` is the minimum strongest normalized-cosine retrieval score. `AGENT_MIN_UNIQUE_UNIVERSITIES` avoids making a multi-university recommendation from one university's pages. `AGENT_MAX_RETRIEVAL_ATTEMPTS` bounds the retrieve → assess → refine cycle and controls additional embedding/model requests. These are evidence guardrails, not a measure of admission probability or answer correctness: calibrate them using labelled candidate queries before relying on the system.
 
 ### Run the RAG tools as a standalone MCP server
 
@@ -282,7 +342,7 @@ To use OpenAI embeddings instead, set `EMBEDDING_PROVIDER=openai`, `OPENAI_API_K
 
 Keep the same embedding model for indexing and querying. When you change `EMBEDDING_PROVIDER` or `EMBEDDING_MODEL`, rebuild `artifacts/` by running `ingest` again; the CLI refuses to query an index built with a different model. The default splitter uses 1,200-character chunks with 180-character overlap. Tune chunk size, overlap, and `top-k` using representative candidate questions—not intuition alone.
 
-`OLLAMA_BASE_URL` is the local Ollama server endpoint, and `OLLAMA_MODEL` is the model name installed in that server. The agent uses Ollama's `POST /api/chat` interface with non-streaming output, a low temperature, and the MCP tool schemas discovered at run time. It has no Ollama API key configuration because the default endpoint is local.
+`OLLAMA_BASE_URL` is the local Ollama server endpoint, and `OLLAMA_MODEL` is the model name installed in that server. The agent uses Ollama's `POST /api/chat` interface with non-streaming output and a low temperature for constrained query refinement and evidence-grounded synthesis. It has no Ollama API key configuration because the default endpoint is local.
 
 ## Cost, quality, and freshness
 
@@ -311,7 +371,7 @@ Keep the same embedding model for indexing and querying. When you change `EMBEDD
 | Results feel too broad | The page corpus is generic or the query lacks a field. | Add field-specific official pages and provide a more detailed profile. |
 | `Index was built with ...` error | `EMBEDDING_MODEL` changed since the last `ingest`. | Rebuild the index with `ingest` or restore the previous model. |
 | The local agent cannot reach Ollama | Ollama is stopped, unavailable at the configured URL, or its model is missing. | Start Ollama, run `ollama pull mistral`, or change `OLLAMA_BASE_URL`/`OLLAMA_MODEL`. |
-| The local model does not call a tool | The selected model may not support reliable tool calling. | Use a tool-capable Ollama model and retry; `mistral` is the default integration target. |
+| The agent returns insufficient evidence | The matching excerpts failed score or source-diversity gates. | Add/review field-specific official pages, rebuild the index, then tune the evidence thresholds using labelled queries if appropriate. |
 | `mcp` import error | Dependencies were installed with an older Python environment. | Recreate the environment with Python 3.10+ and run `pip install -r requirements.txt`. |
 
 ## Production next steps
