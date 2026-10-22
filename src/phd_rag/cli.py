@@ -14,9 +14,9 @@ from .settings import get_settings
 
 def _print_sources(results: object) -> None:
     print("\nRetrieved official sources:")
-    for result in results:  # type: ignore[union-attr]
+    for number, result in enumerate(results, start=1):  # type: ignore[arg-type]
         record = result.record
-        print(f"- {record['university']} ({record['country']}) — {record['url']} [{result.score:.3f}]")
+        print(f"[S{number}] {record['university']} ({record['country']}) — {record['url']} [{result.score:.3f}]")
 
 
 def main() -> None:
@@ -29,6 +29,7 @@ def main() -> None:
     ingest.add_argument("--delay", type=float, default=0.4, help="Seconds between page requests (default: 0.4).")
     ask = subparsers.add_parser("ask", help="Ask a question against the local index.")
     ask.add_argument("question")
+    ask.add_argument("--country", action="append", help="Limit retrieval to a country; repeat to select several.")
     ask.add_argument("--top-k", type=int, default=12)
     recommend = subparsers.add_parser("recommend", help="Recommend research leads from a profile JSON file.")
     recommend.add_argument("--profile", required=True, type=Path)
@@ -57,7 +58,7 @@ def main() -> None:
         manifest = build_index(settings, set(args.country) if args.country else None, args.limit, args.delay)
         print(json.dumps(manifest, indent=2))
     elif args.command == "ask":
-        reply, results = answer(settings, args.question, args.top_k)
+        reply, results = answer(settings, args.question, args.top_k, countries=args.country or None)
         print(reply)
         _print_sources(results)
     elif args.command == "recommend":

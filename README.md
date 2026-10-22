@@ -210,6 +210,7 @@ PYTHONPATH=src python -m phd_rag.cli ingest --limit 2 --delay 1
 
 # Ask an evidence-backed question after an index exists.
 PYTHONPATH=src python -m phd_rag.cli ask "What funding or supervisor details should I verify for an AI PhD?"
+PYTHONPATH=src python -m phd_rag.cli ask "What IELTS score is required?" --country "United Kingdom"
 
 # Recommend PhD research leads for a JSON profile.
 PYTHONPATH=src python -m phd_rag.cli recommend --profile data/example_candidate.json --top-k 12
@@ -221,7 +222,7 @@ PYTHONPATH=src python -m phd_rag.cli agent "Find funded computer-science PhD res
 PYTHONPATH=src python -m unittest discover -s tests
 ```
 
-`--delay` spaces page requests to be considerate of university websites. `--top-k` controls how many chunks are supplied to the answer model; increasing it can improve coverage but also increases answer-context size and cost.
+Retrieval keeps at most 3 chunks per university (`MAX_CHUNKS_PER_UNIVERSITY` in `retrieve.py`) so one long page cannot crowd out others. `--delay` spaces page requests to be considerate of university websites. `--top-k` controls how many chunks are supplied to the answer model; increasing it can improve coverage but also increases answer-context size and cost.
 
 ## Candidate profiles
 
