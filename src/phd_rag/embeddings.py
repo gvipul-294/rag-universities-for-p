@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import threading
 from functools import lru_cache
 
 import faiss
 import numpy as np
 
 from .settings import Settings, require_openai_key
+
+
+# The API serves requests from a thread pool. Running fastembed one call at a time keeps
+# ONNX Runtime from allocating working memory for several requests at once (the service
+# sits near 450 MB on a 1 GB server) and stops two first requests loading the model twice.
+# A query embedding takes ~50 ms, so the queueing is not noticeable.
+_FASTEMBED_LOCK = threading.Lock()
 
 
 @lru_cache(maxsize=2)
@@ -29,8 +37,9 @@ def embed_passages(settings: Settings, texts: list[str]) -> np.ndarray:
     if settings.embedding_provider == "fastembed":
         # Small batches keep ONNX Runtime's memory flat: batch 32 peaked above 730 MB
         # on a 1 GB server, batch 4 stays near 360 MB and is no slower on 2 vCPUs.
-        model = _fastembed_model(settings.embedding_model, str(settings.model_cache_dir))
-        return _normalized(list(model.passage_embed(texts, batch_size=4)))
+        with _FASTEMBED_LOCK:
+            model = _fastembed_model(settings.embedding_model, str(settings.model_cache_dir))
+            return _normalized(list(model.passage_embed(texts, batch_size=4)))
     from openai import OpenAI
 
     client = OpenAI(api_key=require_openai_key())
@@ -45,7 +54,9 @@ def embed_query(settings: Settings, query: str) -> np.ndarray:
     """Embed one search query; returns a (1, dim) L2-normalized float32 matrix."""
     if settings.embedding_provider == "fastembed":
         # BGE models use a query-specific prompt; query_embed applies it.
-        return _normalized(list(_fastembed_model(settings.embedding_model, str(settings.model_cache_dir)).query_embed(query)))
+        with _FASTEMBED_LOCK:
+            model = _fastembed_model(settings.embedding_model, str(settings.model_cache_dir))
+            return _normalized(list(model.query_embed(query)))
     from openai import OpenAI
 
     client = OpenAI(api_key=require_openai_key())
