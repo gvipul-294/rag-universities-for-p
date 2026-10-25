@@ -6,6 +6,7 @@ import hmac
 import json
 from typing import Annotated
 
+import openai
 from fastapi import Depends, FastAPI, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -76,9 +77,23 @@ def _index_status(settings: Settings) -> dict[str, object]:
     }
 
 
+# Server-side setup problems the operator must fix; safe to show (no secrets in these messages).
+_SETUP_ERRORS = ("API_KEY is missing", "Index not found", "Index was built with")
+
+
 def _api_error(error: Exception) -> HTTPException:
     message = str(error)
-    if "OPENAI_API_KEY is missing" in message or "Index not found" in message:
+    if isinstance(error, openai.RateLimitError):
+        return HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The answer model is rate-limited or out of quota. Retry in a minute.",
+        )
+    if isinstance(error, openai.APIError):
+        return HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="The answer model provider returned an error. Check server logs and retry.",
+        )
+    if any(marker in message for marker in _SETUP_ERRORS):
         return HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=message)
     if isinstance(error, ValueError):
         return HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=message)
@@ -142,14 +157,14 @@ def create_app() -> FastAPI:
                 top_k=request.top_k,
                 countries=request.countries or None,
             )
-        except (RuntimeError, ValueError, OSError) as error:
+        except (RuntimeError, ValueError, OSError, openai.APIError) as error:
             raise _api_error(error) from error
         sources = _serialize_sources(results)
         return RAGResponse(
             answer=response_text,
             sources=sources,
             source_count=len(sources),
-            chat_model=get_settings().chat_model,
+            chat_model=get_settings().llm_model,
         )
 
     @app.post("/api/v1/match", response_model=RAGResponse, tags=["research"])
@@ -163,14 +178,14 @@ def create_app() -> FastAPI:
                 top_k=request.top_k,
                 countries=profile.preferred_countries or None,
             )
-        except (RuntimeError, ValueError, OSError) as error:
+        except (RuntimeError, ValueError, OSError, openai.APIError) as error:
             raise _api_error(error) from error
         sources = _serialize_sources(results)
         return RAGResponse(
             answer=response_text,
             sources=sources,
             source_count=len(sources),
-            chat_model=get_settings().chat_model,
+            chat_model=get_settings().llm_model,
         )
 
     return app
