@@ -1,6 +1,6 @@
 # PhD Finder HTTP API
 
-The browser frontend uses this API instead of calling OpenAI or FAISS directly. The API keeps the OpenAI key and local index on the backend, then returns an LLM answer plus the official evidence used for it.
+The browser frontend uses this API instead of calling the LLM provider or FAISS directly. The API keeps the LLM API key (Groq by default) and local index on the backend, then returns an LLM answer plus the official evidence used for it.
 
 ## Run locally
 
@@ -17,7 +17,7 @@ Open `http://127.0.0.1:8000/docs` for the generated interactive API documentatio
 
 ### `GET /api/v1/health`
 
-Returns whether both the FAISS index and chunk metadata are present. It does not call OpenAI and is suitable for a deployment health check.
+Returns whether both the FAISS index and chunk metadata are present. It does not call the LLM provider and is suitable for a deployment health check.
 
 ```bash
 curl --fail-with-body http://127.0.0.1:8000/api/v1/health

@@ -1,6 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type Source = {
   university: string;
@@ -38,6 +40,23 @@ const suggestions = [
   "What should I know about PhD funding in Canada?",
   "Find doctoral programmes in computational biology",
 ];
+
+// The model cites sources as [S3]; turn each into a link to source card 3.
+// Also accept the variants it sometimes writes: 【S3】 and [S3] with a zero-width space.
+function linkCitations(answer: string): string {
+  return answer.replace(/[\[【]\u200b?\s*S(\d+)\s*[\]】]/g, "[S$1](#source-$1)");
+}
+
+// The prompt asks for Markdown only, but models sometimes put HTML lists inside table
+// cells (Markdown cells can't hold lists). react-markdown shows such tags as literal
+// text, so turn the common ones into inline bullets instead.
+function flattenListTags(answer: string): string {
+  return answer
+    .replace(/<\/?[uo]l\s*>/gi, "")
+    .replace(/<li\s*>/gi, " • ")
+    .replace(/<\/li\s*>/gi, "")
+    .replace(/<br\s*\/?>/gi, " ");
+}
 
 export default function Home() {
   const [tab, setTab] = useState<Tab>("ask");
@@ -209,9 +228,9 @@ export default function Home() {
         {error && <div className="error-box"><strong>We couldn’t complete that search.</strong><p>{error}</p></div>}
         {result && <>
           <div className="results-heading"><div><p className="section-kicker">YOUR RESEARCH STARTING POINTS</p><h2>Here’s what we found.</h2></div><span className="result-count">{result.source_count} {result.source_count === 1 ? "source" : "sources"}</span></div>
-          <article className="answer-card"><div className="answer-label"><span>✳</span> A GROUNDED OVERVIEW</div><p>{result.answer}</p><div className="answer-meta">Generated with {result.chat_model} · Research leads, not admissions decisions</div></article>
-          <div className="source-grid">{result.sources.map((source, index) => <article className="source-card" key={`${source.url}-${index}`}>
-            <div className="source-topline"><span className="source-number">0{index + 1}</span><span className="source-country">{source.country}</span><span className="source-score">{Math.round(source.score * 100)}% match</span></div>
+          <article className="answer-card"><div className="answer-label"><span>✳</span> A GROUNDED OVERVIEW</div><div className="answer-body"><ReactMarkdown remarkPlugins={[remarkGfm]}>{linkCitations(flattenListTags(result.answer))}</ReactMarkdown></div><div className="answer-meta">Generated with {result.chat_model} · Research leads, not admissions decisions</div></article>
+          <div className="source-grid">{result.sources.map((source, index) => <article className="source-card" id={`source-${index + 1}`} key={`${source.url}-${index}`}>
+            <div className="source-topline"><span className="source-number">S{index + 1}</span><span className="source-country">{source.country}</span><span className="source-score">{Math.round(source.score * 100)}% match</span></div>
             <h3>{source.university}</h3><p className="source-excerpt">“{source.excerpt}”</p>
             <div className="source-footer"><span>Official source</span><a href={source.url} target="_blank" rel="noreferrer">Visit page <span aria-hidden="true">↗</span></a></div>
           </article>)}</div>
