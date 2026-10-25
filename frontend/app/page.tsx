@@ -24,16 +24,28 @@ type Tab = "ask" | "match";
 
 const countries = [
   "Australia",
+  "Austria",
+  "Belgium",
   "Canada",
   "China",
+  "Finland",
   "France",
   "Germany",
   "India",
+  "Italy",
   "Japan",
+  "Malaysia",
   "Netherlands",
+  "Norway",
+  "South Korea",
+  "Spain",
+  "Sweden",
+  "Switzerland",
   "United Kingdom",
   "United States",
 ];
+
+const maxCountrySelections = 10;
 
 const suggestions = [
   "Which UK universities have AI PhD research opportunities?",
@@ -82,11 +94,15 @@ export default function Home() {
   }, []);
 
   function toggleCountry(country: string) {
-    setSelectedCountries((current) =>
-      current.includes(country)
-        ? current.filter((item) => item !== country)
-        : [...current, country],
-    );
+    setSelectedCountries((current) => {
+      if (current.includes(country)) {
+        return current.filter((item) => item !== country);
+      }
+      if (current.length >= maxCountrySelections) {
+        return current;
+      }
+      return [...current, country];
+    });
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -154,14 +170,14 @@ export default function Home() {
           </p>
           <div className="hero-proof">
             <div className="avatar-stack" aria-hidden="true"><span>R</span><span>M</span><span>A</span></div>
-            <span>Grounded in official university pages</span>
+            <span>194 official university pages across 20 countries</span>
           </div>
         </div>
         <div className="hero-art" aria-hidden="true">
           <div className="orbit orbit-one" /><div className="orbit orbit-two" />
           <div className="sun-disc"><span>FIELD<br />NOTES</span></div>
           <span className="art-label label-top">curiosity, meet opportunity</span>
-          <span className="art-label label-bottom">10 countries · one starting point</span>
+          <span className="art-label label-bottom">20 countries · one starting point</span>
           <span className="spark spark-one">✳</span><span className="spark spark-two">✳</span>
         </div>
       </section>
@@ -202,14 +218,15 @@ export default function Home() {
             )}
 
             <div className="country-section">
-              <div className="country-heading"><span className="field-label">Where would you like to study?</span><span className="optional">OPTIONAL · SELECT ANY</span></div>
+              <div className="country-heading"><span className="field-label">Where would you like to study?</span><span className="optional">OPTIONAL · UP TO {maxCountrySelections}</span></div>
               <div className="country-list">
                 {countries.map((country) => (
-                  <button key={country} type="button" className={`country-chip ${selectedCountries.includes(country) ? "selected" : ""}`} onClick={() => toggleCountry(country)} aria-pressed={selectedCountries.includes(country)}>
+                  <button key={country} type="button" className={`country-chip ${selectedCountries.includes(country) ? "selected" : ""}`} onClick={() => toggleCountry(country)} aria-pressed={selectedCountries.includes(country)} disabled={selectedCountries.length >= maxCountrySelections && !selectedCountries.includes(country)}>
                     {selectedCountries.includes(country) && <span aria-hidden="true">✓ </span>}{country}
                   </button>
                 ))}
               </div>
+              <p className="country-selection-note">{selectedCountries.length} of {maxCountrySelections} country filters selected · {countries.length} countries available</p>
             </div>
 
             <div className="form-footer">
