@@ -133,7 +133,7 @@ curl --fail-with-body --request POST http://127.0.0.1:8000/api/v1/ask \
   --data '{"question":"What IELTS score do UK universities ask for a PhD?","countries":["United Kingdom"]}'
 ```
 
-Open `http://127.0.0.1:8000/docs` while the server is running to inspect and test the generated OpenAPI documentation. See [the API guide](docs/api.md) for the complete request/response contract, the candidate-match cURL example, and EC2 deployment checks.
+Open `http://127.0.0.1:8000/docs` while the server is running to inspect and test the generated OpenAPI documentation. See [the API guide](docs/api.md) for the complete request/response contract, the candidate-match cURL example, and EC2 deployment checks. For how production runs (the EC2 service, Vercel, the API token and memory limits), see [docs/deployment.md](docs/deployment.md).
 
 `CORS_ALLOW_ORIGINS` restricts which browser origins can call the service. Add the exact Vercel production URL before deployment. `PHD_RAG_API_TOKEN` is optional for local development, but must be set before a public deployment; a Vercel server-side proxy should hold it, not client-side JavaScript.
 

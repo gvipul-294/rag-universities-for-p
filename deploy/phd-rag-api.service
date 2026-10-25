@@ -1,0 +1,22 @@
+# systemd unit for the PhD Finder API on the EC2 host.
+# Install: see docs/deployment.md
+[Unit]
+Description=PhD Finder API (FastAPI/uvicorn)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ec2-user
+WorkingDirectory=/home/ec2-user/phd-rag
+Environment=PYTHONPATH=src
+# --limit-concurrency: beyond 4 in-flight requests uvicorn answers 503 instead of
+# piling up work (and memory) on a 1 GB instance.
+ExecStart=/home/ec2-user/phd-rag/.venv/bin/uvicorn phd_rag.api:app --host 0.0.0.0 --port 8000 --workers 1 --limit-concurrency 4
+Restart=on-failure
+RestartSec=5
+# The API settles near 450-500 MB once the embedding model is loaded. If it goes past
+# this, systemd kills and restarts it instead of letting it starve sshd.
+MemoryMax=700M
+
+[Install]
+WantedBy=multi-user.target
