@@ -107,5 +107,119 @@
   {"country":"China","university":"Nanjing University","url":"https://hwxy.nju.edu.cn/english/"},
   {"country":"China","university":"Wuhan University","url":"https://admission.whu.edu.cn/en/"},
   {"country":"China","university":"Harbin Institute of Technology","url":"https://en.hit.edu.cn/admissions/"},
-  {"country":"China","university":"Sun Yat-sen University","url":"https://iso.sysu.edu.cn/en/admission"}
+  {"country":"China","university":"Sun Yat-sen University","url":"https://iso.sysu.edu.cn/en/admission"},
+
+  {"country":"United States","university":"Northwestern University","url":"https://www.tgs.northwestern.edu/admission/"},
+  {"country":"United States","university":"Duke University","url":"https://gradschool.duke.edu/admissions/"},
+  {"country":"United States","university":"University of California, Los Angeles","url":"https://grad.ucla.edu/admissions/"},
+  {"country":"United States","university":"Carnegie Mellon University","url":"https://www.cmu.edu/graduate/admissions/index.html"},
+  {"country":"United States","university":"University of California, San Diego","url":"https://grad.ucsd.edu/admissions/index.html"},
+  {"country":"United States","university":"Brown University","url":"https://graduateschool.brown.edu/admission"},
+
+  {"country":"United Kingdom","university":"University of Glasgow","url":"https://www.gla.ac.uk/postgraduate/research/"},
+  {"country":"United Kingdom","university":"University of Birmingham","url":"https://www.birmingham.ac.uk/study/postgraduate/research"},
+  {"country":"United Kingdom","university":"University of Leeds","url":"https://www.leeds.ac.uk/research-degrees"},
+  {"country":"United Kingdom","university":"University of Sheffield","url":"https://www.sheffield.ac.uk/postgraduate/research"},
+  {"country":"United Kingdom","university":"University of Nottingham","url":"https://www.nottingham.ac.uk/pgstudy/research/"},
+  {"country":"United Kingdom","university":"University of Southampton","url":"https://www.southampton.ac.uk/study/postgraduate-research"},
+  {"country":"United Kingdom","university":"Queen Mary University of London","url":"https://www.qmul.ac.uk/postgraduate/research/"},
+  {"country":"United Kingdom","university":"University of St Andrews","url":"https://www.st-andrews.ac.uk/pgstudents/"},
+  {"country":"United Kingdom","university":"Newcastle University","url":"https://www.ncl.ac.uk/postgraduate/"},
+
+  {"country":"Canada","university":"University of Ottawa","url":"https://www.uottawa.ca/study/graduate-studies"},
+  {"country":"Canada","university":"Université Laval","url":"https://www.ulaval.ca/admission"},
+  {"country":"Canada","university":"Simon Fraser University","url":"https://www.sfu.ca/gradstudies/apply.html"},
+  {"country":"Canada","university":"University of Manitoba","url":"https://umanitoba.ca/graduate-studies/"},
+  {"country":"Canada","university":"University of Saskatchewan","url":"https://grad.usask.ca/index.php"},
+  {"country":"Canada","university":"University of Guelph","url":"https://graduatestudies.uoguelph.ca/future"},
+  {"country":"Canada","university":"York University","url":"https://futurestudents.yorku.ca/graduate"},
+  {"country":"Canada","university":"Concordia University","url":"https://www.concordia.ca/academics/graduate.html"},
+
+  {"country":"Australia","university":"Flinders University","url":"https://www.flinders.edu.au/study/postgrad"},
+  {"country":"Australia","university":"Curtin University","url":"https://www.curtin.edu.au/study/research/"},
+  {"country":"Australia","university":"RMIT University","url":"https://www.rmit.edu.au/research/research-degrees"},
+  {"country":"Australia","university":"University of Wollongong","url":"https://www.uow.edu.au/study/postgraduates/"},
+  {"country":"Australia","university":"Murdoch University","url":"https://www.murdoch.edu.au/study/study-levels/postgraduate"},
+
+  {"country":"Germany","university":"University of Hamburg","url":"https://www.uni-hamburg.de/en/campuscenter/bewerbung/promotion.html"},
+  {"country":"Germany","university":"University of Tübingen","url":"https://uni-tuebingen.de/forschung/forschungsschwerpunkte/lead-graduate-school-research-network/lead/"},
+  {"country":"Germany","university":"Friedrich-Alexander University Erlangen-Nürnberg","url":"https://www.fau.eu/research/young-researchers/doctoral-candidates/"},
+
+  {"country":"France","university":"Claude Bernard University Lyon 1","url":"https://www.univ-lyon1.fr/formation/graduate"},
+  {"country":"France","university":"University of Montpellier","url":"https://www.umontpellier.fr/recherche/etudes-doctorales-et-hdr"},
+  {"country":"France","university":"University of Lorraine","url":"https://www.univ-lorraine.fr/recherche-et-innovation/ecoles-doctorales/"},
+  {"country":"France","university":"Nantes Université","url":"https://www.univ-nantes.fr/recherche-et-innovation/doctorat"},
+  {"country":"France","university":"Université Clermont Auvergne","url":"https://www.uca.fr/college-des-etudes-doctorales"},
+
+  {"country":"Netherlands","university":"University of Twente","url":"https://www.utwente.nl/en/education/tgs/"},
+
+  {"country":"Japan","university":"Waseda University","url":"https://www.waseda.jp/inst/admission/en/graduate/"},
+  {"country":"Japan","university":"Kanazawa University","url":"https://www.kanazawa-u.ac.jp/e/admission/graduate/"},
+  {"country":"Japan","university":"Tokyo University of Agriculture and Technology","url":"https://www.tuat.ac.jp/graduate/"},
+  {"country":"Japan","university":"Tokyo Metropolitan University","url":"https://www.tmu.ac.jp/academics/graduate.html"},
+  {"country":"Japan","university":"Tokyo Medical and Dental University","url":"https://www.tmd.ac.jp/english/admissions/"},
+
+  {"country":"India","university":"Indian Institute of Technology Guwahati","url":"https://iitg.ac.in/admission/"},
+  {"country":"India","university":"Indian Institute of Technology (BHU) Varanasi","url":"https://www.iitbhu.ac.in/dean/doaa/admission/pg"},
+  {"country":"India","university":"Indian Institute of Science Education and Research Kolkata","url":"https://www.iiserkol.ac.in/web/en/academic/admission"},
+  {"country":"India","university":"Indian Institute of Science Education and Research Mohali","url":"https://www.iisermohali.ac.in/admission-news/admissions-to-phd-program"},
+  {"country":"India","university":"Tata Institute of Fundamental Research","url":"https://www.tifr.res.in/academics/"},
+  {"country":"India","university":"Amrita Vishwa Vidyapeetham","url":"https://www.amrita.edu/admissions/"},
+
+  {"country":"China","university":"Tongji University","url":"https://study.tongji.edu.cn/lxsq/ssyjsxm/zsjz.htm"},
+  {"country":"China","university":"Renmin University of China","url":"http://iso.ruc.edu.cn/sqlx/PhDinEnglish/index.htm"},
+  {"country":"China","university":"Beijing Normal University","url":"https://admission-is.bnu.edu.cn/"},
+  {"country":"China","university":"Central South University","url":"https://intl.csu.edu.cn/English/Admission/Graduate_Programs.htm"},
+  {"country":"China","university":"Xi'an Jiaotong University","url":"https://sie.xjtu.edu.cn/"},
+  {"country":"China","university":"Shandong University","url":"https://www.istudy.sdu.edu.cn/"},
+
+  {"country":"Italy","university":"Sapienza University of Rome","url":"https://www.uniroma1.it/en/pagina/phd-programmes"},
+  {"country":"Italy","university":"University of Padua","url":"https://www.unipd.it/en/phd-courses"},
+  {"country":"Italy","university":"Politecnico di Milano","url":"https://www.polimi.it/dottorato/"},
+  {"country":"Italy","university":"University of Pisa","url":"https://www.unipi.it/ricerca/dottorato-di-ricerca/"},
+
+  {"country":"Spain","university":"Autonomous University of Barcelona","url":"https://www.uab.cat/web/study/phds-1345662181524.html"},
+  {"country":"Spain","university":"University of Valencia","url":"https://www.uv.es/uvweb/universitat/ca/estudis-postgrau/doctorats/oferta-programes-doctorat-1285957462233.html"},
+  {"country":"Spain","university":"University of Navarra","url":"https://www.unav.edu/web/estudios/doctorado"},
+
+  {"country":"Switzerland","university":"ETH Zurich","url":"https://ethz.ch/en/doctorate.html"},
+  {"country":"Switzerland","university":"EPFL","url":"https://www.epfl.ch/education/phd/"},
+  {"country":"Switzerland","university":"University of Geneva","url":"https://www.unige.ch/doctorat/en/"},
+  {"country":"Switzerland","university":"University of Basel","url":"https://www.unibas.ch/de/Forschung/Personenfoerderung/Doktorierende/PhD-Position.html"},
+  {"country":"Switzerland","university":"University of Bern","url":"https://www.unibe.ch/direkteinstiegsseiten/doktorierende___phd/index_ger.html"},
+  {"country":"Switzerland","university":"University of Lausanne","url":"https://www.unil.ch/unil/fr/home/menuinst/etudier/doctorat.html"},
+  {"country":"Switzerland","university":"University of St. Gallen","url":"https://www.unisg.ch/en/research/phd/"},
+
+  {"country":"Sweden","university":"Lund University","url":"https://www.lunduniversity.lu.se/admissions/phd-studies"},
+  {"country":"Sweden","university":"KTH Royal Institute of Technology","url":"https://www.kth.se/en/studies/phd"},
+  {"country":"Sweden","university":"Karolinska Institutet","url":"https://education.ki.se/doctoral-education"},
+  {"country":"Sweden","university":"Örebro University","url":"https://www.oru.se/english/study/doctoral-studies/"},
+
+  {"country":"Belgium","university":"KU Leuven","url":"https://www.kuleuven.be/english/research/phd"},
+  {"country":"Belgium","university":"Ghent University","url":"https://www.ugent.be/en/research/doctoralresearch"},
+  {"country":"Belgium","university":"Vrije Universiteit Brussel","url":"https://www.vub.be/nl/vub-onderzoek/word-onderzoeker-aan-de-vub/word-phd-kandidaat"},
+  {"country":"Belgium","university":"Université libre de Bruxelles","url":"https://www.ulb.be/fr/devenir-chercheur-chercheuse/doctorat"},
+  {"country":"Belgium","university":"UCLouvain","url":"https://uclouvain.be/catalogue-formations/doctorats-2026"},
+  {"country":"Belgium","university":"University of Namur","url":"https://www.unamur.be/fr/etudes/se-former/doctorat"},
+
+  {"country":"Norway","university":"University of Bergen","url":"https://www.uib.no/en/phd"},
+  {"country":"Norway","university":"Norwegian University of Life Sciences","url":"https://www.nmbu.no/en/studies/phd"},
+  {"country":"Norway","university":"Inland Norway University of Applied Sciences","url":"https://www.inn.no/english/research/phd/"},
+  {"country":"Norway","university":"BI Norwegian Business School","url":"https://www.bi.edu/programmes-and-individual-courses/phd/"},
+
+  {"country":"Finland","university":"University of Helsinki","url":"https://www.helsinki.fi/en/research/doctoral-education"},
+  {"country":"Finland","university":"Aalto University","url":"https://www.aalto.fi/en/doctoral-education"},
+
+  {"country":"Austria","university":"University of Vienna","url":"https://doktorat.univie.ac.at/en/"},
+  {"country":"Austria","university":"TU Wien","url":"https://www.tuwien.at/en/studies/studies/doctoral-programmes"},
+  {"country":"Austria","university":"University of Graz","url":"https://doctoral-academy.uni-graz.at/en/"},
+  {"country":"Austria","university":"University of Salzburg","url":"https://www.plus.ac.at/doctorate-school/"},
+  {"country":"Austria","university":"Vienna University of Economics and Business","url":"https://www.wu.ac.at/studium/doktorat-phd"},
+
+  {"country":"South Korea","university":"Kyung Hee University","url":"https://www.khu.ac.kr/eng/user/contents/view.do?menuNo=300013"},
+
+  {"country":"Malaysia","university":"Universiti Sains Malaysia","url":"https://ips.usm.my/"},
+  {"country":"Malaysia","university":"Universiti Teknologi Malaysia","url":"https://admission.utm.my/"},
+  {"country":"Malaysia","university":"Universiti Teknologi PETRONAS","url":"https://www.utp.edu.my/Pages/Academic/Centre-of-Graduate-Studies.aspx"},
+  {"country":"Malaysia","university":"University of Nottingham Malaysia","url":"https://www.nottingham.edu.my/Study/Postgraduate-courses/Postgraduate-courses.aspx"}
 ]

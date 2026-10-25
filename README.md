@@ -2,7 +2,7 @@
 
 > New here? [HOW_IT_WORKS.md](HOW_IT_WORKS.md) gives a one-page walkthrough of each step and the file that does it.
 
-A runnable, source-backed RAG prototype for discovering PhD research leads from official university graduate/admissions pages. It starts with a curated registry of 100 major research universities across ten countries, downloads only the pages in that registry, and records the exact source URL and fetch time with every chunk.
+A runnable, source-backed RAG prototype for discovering PhD research leads from official university graduate/admissions pages. It starts with a curated registry of 194 research universities across 20 countries, downloads only the pages in that registry, and records the exact source URL and fetch time with every chunk.
 
 This is deliberately **not** an admissions decision engine. It returns research leads and citations, never an admission probability or a claim that should be checked against the official page.
 
@@ -17,7 +17,7 @@ It does **not** scrape behind logins, bypass website restrictions, select a supe
 
 ## Why FAISS here—and when not to use it
 
-The requested corpus is roughly 100 public admissions/research pages. FAISS is the best first database choice for that scale because it is local, free, fast, transparent, and has no hosting or data-retention concern. `IndexFlatIP` with L2-normalized embeddings gives exact cosine-similarity retrieval; it is simple to inspect and rebuild.
+The requested corpus is roughly 200 public admissions/research pages. FAISS is the best first database choice for that scale because it is local, free, fast, transparent, and has no hosting or data-retention concern. `IndexFlatIP` with L2-normalized embeddings gives exact cosine-similarity retrieval; it is simple to inspect and rebuild.
 
 | Situation | Recommended store | Reason |
 | --- | --- | --- |
@@ -28,16 +28,16 @@ The requested corpus is roughly 100 public admissions/research pages. FAISS is t
 
 The code already stores country, university, URL, focus, and fetch time as chunk metadata. With FAISS, country filtering is applied after over-fetching; move to pgvector/Qdrant before relying on complex filters, many users, incremental writes, or millions of chunks.
 
-## What is in the seed registry
+## What is in the registry
 
-`data/universities.json` contains 10 sources in each of: Australia, Canada, China, France, Germany, India, Japan, Netherlands, United Kingdom, and United States. The selection is a starting list of major research universities, **not a claim of a current ranking**. Each URL targets an official university graduate, doctoral, or admissions page. At ingestion, the downloaded official text—not a hand-authored university profile—is what enters the vector database.
+`data/universities.json` contains 194 official university sources across 20 countries. It covers Australia, Austria, Belgium, Canada, China, Finland, France, Germany, India, Italy, Japan, Malaysia, the Netherlands, Norway, South Korea, Spain, Sweden, Switzerland, the United Kingdom, and the United States. Country counts are uneven because sources were included only after passing the existing fetch, chunk, embedding, and FAISS build; the requested per-country expansion target is not yet met. See [the coverage and validation notes](docs/international-student-distribution.md). The selection is a starting list of research universities, **not a claim of a current ranking**. Each URL targets an official university graduate, doctoral, or admissions page. At ingestion, the downloaded official text—not a hand-authored university profile—is what enters the vector database.
 
 University websites change frequently. Review the registry and re-ingest before any consequential use. Failed or blocked pages are retained in `artifacts/manifest.json` so they cannot quietly disappear from the corpus.
 
 ## Architecture
 
 ```text
-Official URLs (100) -> requests + HTML text extraction -> RecursiveCharacterTextSplitter
+Official URLs (194) -> requests + HTML text extraction -> RecursiveCharacterTextSplitter
        -> local fastembed embeddings (bge-small-en-v1.5) -> normalized FAISS index + JSONL metadata
        -> retrieve relevant chunks -> either:
           - an OpenAI-compatible chat API (Groq by default) for `ask` / `recommend`, or
@@ -68,7 +68,7 @@ The index is intentionally rebuilt from source pages rather than incrementally m
 
 | Path | Purpose |
 | --- | --- |
-| `data/universities.json` | Reviewed seed list of official university URLs and country metadata. |
+| `data/universities.json` | Reviewed list of official university URLs and country metadata. |
 | `data/example_candidate.json` | Example input profile for a recommendation query. |
 | `src/phd_rag/ingest.py` | Web extraction, recursive chunking, and FAISS persistence. |
 | `src/phd_rag/embeddings.py` | Embedding backends: local fastembed (default) or the OpenAI embeddings API. |
@@ -105,7 +105,7 @@ PYTHONPATH=src python -m phd_rag.cli ingest --limit 2
 PYTHONPATH=src python -m phd_rag.cli ask "Which official pages mention doctoral research applications?"
 ```
 
-Build the full 100-source index (be considerate of university sites; the default delay is 0.4 seconds):
+Build the full 194-source index (be considerate of university sites; the default delay is 0.4 seconds):
 
 ```bash
 PYTHONPATH=src python -m phd_rag.cli ingest
@@ -236,7 +236,7 @@ Do not expose this server on a public network without authentication and access 
 ## Command reference
 
 ```bash
-# Inspect all 100 official source URLs before ingesting.
+# Inspect all 194 official source URLs before ingesting.
 PYTHONPATH=src python -m phd_rag.cli sources
 
 # Index only selected countries or run a small smoke test.
