@@ -78,6 +78,8 @@ textarea:focus, .input-wrap input:focus { border-color: #8da077; box-shadow: 0 0
 .country-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }.country-heading .field-label { margin: 0; }
 .country-list { display: flex; flex-wrap: wrap; gap: 7px; }
 .country-chip { padding: 7px 11px; }.country-chip.selected { border-color: #53745b; background: #edf3e8; color: #345b40; }
+.country-chip:disabled { cursor: not-allowed; opacity: .5; }
+.country-selection-note { margin: 9px 0 0; color: #969c90; font-size: 9px; }
 .form-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 25px; padding-top: 19px; border-top: 1px solid #eff0ea; }
 .privacy-note { color: #838a7e; font-size: 10px; }.privacy-note span { margin-right: 5px; color: #829761; }
 .submit-button { display: flex; align-items: center; gap: 24px; min-height: 43px; padding: 0 17px; border: 0; border-radius: 3px; background: var(--green); color: white; cursor: pointer; font-size: 11px; font-weight: 600; transition: background .2s, transform .2s; }
