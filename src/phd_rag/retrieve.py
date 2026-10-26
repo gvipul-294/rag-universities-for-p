@@ -90,10 +90,10 @@ def search(
     _check_index_model(settings)
     query_vector = embed_query(settings, query)
     index = faiss.read_index(str(index_path))
-    # Over-fetch before applying metadata filters, as IndexFlatIP has no native
-    # filter support. This is adequate for the small local corpus; use a vector
-    # service with server-side filters once the corpus or traffic grows.
-    search_k = min(max(top_k * 8, top_k), index.ntotal)
+    # IndexFlatIP has no native filter support. Search the whole local index when
+    # countries are selected so matching sources cannot be missed below the
+    # semantic over-fetch window.
+    search_k = index.ntotal if countries else min(max(top_k * 8, top_k), index.ntotal)
     scores, positions = index.search(query_vector, search_k)
     chunks = _load_chunks(settings)
     results = [
@@ -103,9 +103,7 @@ def search(
     ]
     if countries:
         wanted = {country.casefold() for country in countries}
-        filtered = [item for item in results if item.record["country"].casefold() in wanted]
-        if filtered:
-            results = filtered
+        results = [item for item in results if item.record["country"].casefold() in wanted]
     if max_per_university:
         per_university: Counter[str] = Counter()
         capped = []
@@ -136,6 +134,8 @@ def answer(
     countries: list[str] | None = None,
 ) -> tuple[str, list[RetrievedChunk]]:
     results = search(settings, question, top_k=top_k, countries=countries)
+    if not results:
+        return "No indexed university sources matched this search. Try different country filters or search terms.", []
     # Chat Completions is the API every OpenAI-compatible provider supports.
     client = OpenAI(api_key=require_llm_key(), base_url=settings.llm_base_url)
     response = client.chat.completions.create(
